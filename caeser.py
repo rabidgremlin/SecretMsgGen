@@ -1,35 +1,65 @@
 from PIL import Image, ImageDraw, ImageFont
-
-#im = Image.open("lena.pgm")
-im = Image.new("RGB",(512,512))
-
-draw = ImageDraw.Draw(im)
-draw.line((0, 0) + im.size, fill=128)
-draw.line((0, im.size[1], im.size[0], 0), fill=128)
-
-font = ImageFont.truetype("arial.ttf", 25)
-
-draw.text((10, 25), "world", font=font)
-
-
-del draw
-
-# write to stdout
-im.save("bob.png", "PNG")
-
 import codecs
-print(codecs.encode('ABC', 'rot_13'))
-print(codecs.encode('NOP', 'rot_13'))
-print(codecs.encode('123', 'rot_13'))
+from metrics import Metrics,A4_LANDSCAPE_IN_MM
+import sys
 
-from metrics import Metrics
 
-m = Metrics(72)
-print("72 points are %f px @72dpi" % m.pt2px(72))
-print("25 mm are %f px @72dpi" % m.mm2px(25))
+msg = str(sys.argv[1]).upper()
+file_name = str(sys.argv[2])
+
 
 m = Metrics(300)
-print("72 points are %f px @300dpi" % m.pt2px(72))
-print("25 mm are %f px @300dpi" % m.mm2px(25))
 
-print("point 25mm,25mm is " + str(m.mmpoint2px((25,25))))
+font = ImageFont.truetype("arial.ttf", m.mm2pt(10))
+im = Image.new("RGB",m.mmpoint2px(A4_LANDSCAPE_IN_MM),"#ffffff")
+draw = ImageDraw.Draw(im)
+
+
+def draw_letter_rect(x,y,letter):
+	draw.rectangle( (m.mmpoint2px((x,y)), m.mmpoint2px((x+12,y+10))),outline="#000000", fill=None)
+	textsize = draw.textsize(letter)
+	tx = m.mm2px(x+2)
+	ty = m.mm2px(y)		
+	draw.text((tx,ty), letter, font=font,fill="#000000")
+	
+def draw_empty_rect(x,y):
+	draw.rectangle( (m.mmpoint2px((x,y)), m.mmpoint2px((x+12,y+10))),outline="#000000", fill=None)	
+	
+xpos = 10	
+for c in "ABCDEFGHIJKLM":
+	draw_letter_rect(xpos,10,c)
+	draw_letter_rect(xpos,20,codecs.encode(c,"rot_13"))
+	xpos+=12
+
+
+print(msg)
+print(codecs.encode(msg, 'rot_13'))
+
+
+coded_msg = codecs.encode(msg, 'rot_13')
+msg_words = coded_msg.split()
+
+xpos = 10	
+ypos = 50
+chars_drawn = 0
+
+for word in msg_words:
+	if chars_drawn+len(word) > 22:
+		chars_drawn = 0
+		ypos+=35
+		xpos=10		
+
+	for c in word+" ":
+		if (c != " "):   
+			draw_letter_rect(xpos,ypos,c)
+			draw_empty_rect(xpos,ypos+15)
+		xpos+=12
+		chars_drawn += 1
+		if (chars_drawn > 22):
+			chars_drawn = 0
+			ypos+=35
+			xpos=10
+
+
+# write to stdout
+im.save(file_name, "PNG")
